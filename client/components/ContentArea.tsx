@@ -16,6 +16,16 @@ import {
   MoreVertical
 } from 'lucide-react';
 import supabase from '@/lib/supabase';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface ContentAreaProps {
@@ -25,6 +35,7 @@ interface ContentAreaProps {
 
 const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [registrationSearchTerm, setRegistrationSearchTerm] = useState('');
   const [selectedVisitFilter, setSelectedVisitFilter] = useState('all');
@@ -43,9 +54,13 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
   const [pastVisits, setPastVisits] = useState<VisitItem[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [visitToDelete, setVisitToDelete] = useState<VisitItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
+      console.log('Fetching visits data...');
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -64,6 +79,8 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
           .lt('visit_date', currentDate)
           .order('visit_date', { ascending: false })
       ]);
+
+      console.log('Fetch results:', { upcoming, upErr, past, pastErr });
 
       if (!upErr && upcoming) {
         const mappedUpcoming: VisitItem[] = upcoming.map((row: any) => ({
@@ -93,6 +110,65 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
     };
     fetchData();
   }, []);
+
+  const handleDeleteClick = (visit: VisitItem) => {
+    console.log('Delete button clicked for visit:', visit);
+    setVisitToDelete(visit);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!visitToDelete) return;
+    
+    console.log('Attempting to delete visit:', visitToDelete);
+    setIsDeleting(true);
+    
+    try {
+      console.log('Sending delete request to Supabase for ID:', visitToDelete.id);
+      
+      const { data, error } = await supabase
+        .from('iv_visits')
+        .delete()
+        .eq('id', visitToDelete.id)
+        .select(); // Add select() to see what was deleted
+
+      console.log('Supabase response:', { data, error });
+
+      if (error) {
+        console.error('Error deleting visit:', error);
+        toast({
+          title: "Error",
+          description: `Failed to delete visit: ${error.message}`,
+          variant: "destructive",
+        });
+      } else {
+        console.log('Successfully deleted visit from database');
+        // Remove the deleted visit from both upcoming and past visits states
+        setUpcomingVisits(prev => prev.filter(v => v.id !== visitToDelete.id));
+        setPastVisits(prev => prev.filter(v => v.id !== visitToDelete.id));
+        setDeleteDialogOpen(false);
+        setVisitToDelete(null);
+        toast({
+          title: "Success",
+          description: "Visit deleted successfully.",
+        });
+      }
+    } catch (error) {
+      console.error('Exception during delete:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete visit. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setVisitToDelete(null);
+  };
 
   const fetchRegistrations = async () => {
     setIsLoadingRegistrations(true);
@@ -282,7 +358,10 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
                   <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                  <button 
+                    onClick={() => handleDeleteClick(visit)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                  >
                     <Trash2 className="w-4 h-4" />
                   </button>
                   <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg">
@@ -357,6 +436,15 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
                   </button>
                   <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg">
                     <Edit className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteClick(visit)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg">
+                    <MoreVertical className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -621,6 +709,34 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
   return (
     <div className="flex-1 bg-gray-50 p-6 overflow-auto">
       {renderContent()}
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Visit</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{visitToDelete?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleDeleteCancel}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

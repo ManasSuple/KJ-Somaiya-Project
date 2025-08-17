@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import ContentArea from './ContentArea';
+import { Toaster } from './ui/toaster';
 
 const AdminPanel: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -28,6 +29,7 @@ const AdminPanel: React.FC = () => {
         activeSection={activeSection}
         userRole={userRole}
       />
+      <Toaster />
     </div>
   );
 };
