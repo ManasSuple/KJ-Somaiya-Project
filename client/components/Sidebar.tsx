@@ -36,7 +36,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const superAdminItems = [
-    { id: 'admins', label: 'Manage Admins', icon: UserPlus },
     { id: 'roles', label: 'Assign Roles', icon: Shield },
   ];
 
