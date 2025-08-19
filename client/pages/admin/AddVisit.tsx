@@ -8,11 +8,11 @@ import Sidebar from '@/components/Sidebar';
 const AddVisit: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeSection, setActiveSection] = useState('add-visit');
   const [userRole] = useState<'faculty' | 'super'>('super');
-  
+
   const [formData, setFormData] = useState({
     title: '',
     location_city: '',
@@ -172,7 +172,7 @@ const AddVisit: React.FC = () => {
         onSectionChange={handleSectionChange}
         userRole={userRole}
       />
-      
+
       <div className="flex-1 bg-gray-50 p-6 overflow-auto">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
@@ -190,7 +190,7 @@ const AddVisit: React.FC = () => {
                   <FileText className="w-5 h-5 text-red-600" />
                   <span>Basic Information</span>
                 </h3>
-                
+
                 <div>
                   <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
                     Visit Title *
@@ -229,7 +229,7 @@ const AddVisit: React.FC = () => {
                   <MapPin className="w-5 h-5 text-red-600" />
                   <span>Location</span>
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="location_city" className="block text-sm font-medium text-gray-700 mb-2">
@@ -274,7 +274,7 @@ const AddVisit: React.FC = () => {
                   <Calendar className="w-5 h-5 text-red-600" />
                   <span>Visit Details</span>
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="visit_date" className="block text-sm font-medium text-gray-700 mb-2">
@@ -287,9 +287,9 @@ const AddVisit: React.FC = () => {
                       required
                       value={formData.visit_date}
                       onChange={handleInputChange}
-                      min={new Date().toISOString().split('T')[0]}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     />
+
                   </div>
 
                   <div>
@@ -317,7 +317,7 @@ const AddVisit: React.FC = () => {
                   <Building className="w-5 h-5 text-red-600" />
                   <span>Department & Industry</span>
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-2">
@@ -365,7 +365,7 @@ const AddVisit: React.FC = () => {
                   <Upload className="w-5 h-5 text-red-600" />
                   <span>Visit Image (Optional)</span>
                 </h3>
-                
+
                 <div>
                   <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-2">
                     Upload Image
