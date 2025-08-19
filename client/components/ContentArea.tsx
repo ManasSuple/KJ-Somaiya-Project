@@ -250,7 +250,7 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
   };
 
   useEffect(() => {
-    if (activeSection === 'registrations' || activeSection === 'download') {
+    if (activeSection === 'registrations') {
       fetchRegistrations();
     }
     if (activeSection === 'roles') {
@@ -760,8 +760,6 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
         return renderGallery();
       case 'registrations':
         return renderRegistrations();
-      case 'download':
-        return renderRegistrations(); // Same as registrations but with download focus
       case 'roles':
         return userRole === 'super' ? renderManageRoles() : renderUpcomingVisits();
       default:

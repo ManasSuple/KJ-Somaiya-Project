@@ -35,18 +35,53 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    // First try Supabase auth.users
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return false;
-    if (data.user) {
+    if (!error && data.user) {
       setUser({ id: data.user.id, email: data.user.email ?? "", name: data.user.user_metadata?.full_name ?? null });
+      // Clear any student local session if present, to avoid ambiguity
+      try { localStorage.removeItem('student_user'); } catch {}
       return true;
     }
+
+    // Fallback 1: secure RPC that validates against public.students with SECURITY DEFINER
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('login_student', {
+        p_email: email,
+        p_password: password,
+      });
+      if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
+        const s = rpcData[0] as { id: string; email: string; department?: string };
+        const studentUser: User = { id: s.id, email: s.email, department: s.department };
+        setUser(studentUser);
+        try { localStorage.setItem('student_user', JSON.stringify(studentUser)); } catch {}
+        return true;
+      }
+    } catch {}
+
+    // Fallback 2: direct select from public.students (requires permissive RLS). Not recommended but kept as last resort.
+    try {
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('id,email,department')
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+      if (!studentError && student) {
+        const studentUser: User = { id: student.id, email: student.email, department: student.department };
+        setUser(studentUser);
+        try { localStorage.setItem('student_user', JSON.stringify(studentUser)); } catch {}
+        return true;
+      }
+    } catch {}
+
     return false;
   };
 
   const logout = () => {
     supabase.auth.signOut();
     setUser(null);
+    try { localStorage.removeItem('student_user'); } catch {}
   };
 
   const isAuthenticated = !!user;
@@ -62,6 +97,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
         setUser({ id: data.user.id, email: data.user.email ?? "", name: data.user.user_metadata?.full_name ?? null });
+      } else {
+        // Restore student session from localStorage if present
+        try {
+          const raw = localStorage.getItem('student_user');
+          if (raw) {
+            const parsed = JSON.parse(raw) as Partial<User>;
+            if (parsed && parsed.id && parsed.email) {
+              setUser({ id: String(parsed.id), email: String(parsed.email), department: parsed.department });
+            }
+          }
+        } catch {}
       }
     };
     init();
@@ -70,6 +116,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (session?.user) {
         setUser({ id: session.user.id, email: session.user.email ?? "", name: session.user.user_metadata?.full_name ?? null });
       } else {
+        // If no Supabase session, check if a student local session exists
+        try {
+          const raw = localStorage.getItem('student_user');
+          if (raw) {
+            const parsed = JSON.parse(raw) as Partial<User>;
+            if (parsed && parsed.id && parsed.email) {
+              setUser({ id: String(parsed.id), email: String(parsed.email), department: parsed.department });
+              return;
+            }
+          }
+        } catch {}
         setUser(null);
       }
     });

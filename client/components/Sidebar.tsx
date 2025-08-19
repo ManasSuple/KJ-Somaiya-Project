@@ -1,15 +1,17 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Calendar, 
   History, 
   Image, 
   Users, 
-  Download, 
   UserPlus, 
   Shield, 
   ChevronLeft, 
   ChevronRight,
-  Building2
+  Building2,
+  LogOut
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -27,12 +29,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSectionChange,
   userRole 
 }) => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const menuItems = [
     { id: 'upcoming', label: 'Upcoming Visits', icon: Calendar },
     { id: 'past', label: 'Past Visits', icon: History },
     { id: 'gallery', label: 'Gallery', icon: Image },
     { id: 'registrations', label: 'View Registrations', icon: Users },
-    { id: 'download', label: 'Download Excel', icon: Download },
   ];
 
   const superAdminItems = [
@@ -133,6 +136,26 @@ const Sidebar: React.FC<SidebarProps> = ({
           </>
         )}
       </nav>
+
+      {/* Footer: current user + logout */}
+      <div className="p-3 border-t border-gray-800">
+        {!isCollapsed && (
+          <div className="mb-2">
+            <p className="text-xs text-gray-400">Signed in as</p>
+            <p className="text-sm truncate" title={user?.email || ''}>{user?.email || '—'}</p>
+          </div>
+        )}
+        <button
+          onClick={() => { logout(); navigate('/admin/login', { replace: true }); }}
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} space-x-3 px-3 py-2.5 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white`}
+          title={isCollapsed ? 'Log out' : undefined}
+        >
+          <LogOut className="w-5 h-5 flex-shrink-0" />
+          {!isCollapsed && (
+            <span className="text-sm font-medium">Log out</span>
+          )}
+        </button>
+      </div>
     </div>
   );
 };
