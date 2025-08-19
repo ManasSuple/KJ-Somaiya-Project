@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import supabase from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,14 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff, User, Lock } from "lucide-react";
 
-const AdminLogin = () => {
+const StudentLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  
-  const { login } = useAuth();
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,13 +23,26 @@ const AdminLogin = () => {
     setError("");
 
     try {
-      const success = await login(email, password);
-      if (success) {
-        navigate("/admin");
-      } else {
+      const { data, error: sbError } = await supabase
+        .from("students")
+        .select("id,email,department")
+        .eq("email", email)
+        .eq("password", password)
+        .single();
+
+      if (sbError || !data) {
         setError("Invalid email or password");
+        return;
       }
-    } catch (err) {
+
+      // Save minimal student session locally
+      localStorage.setItem(
+        "student_user",
+        JSON.stringify({ id: data.id, email: data.email, department: data.department })
+      );
+
+      navigate("/upcoming", { replace: true });
+    } catch (_err) {
       setError("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
@@ -49,13 +61,13 @@ const AdminLogin = () => {
             />
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900">
-            Admin Portal
+            Student Login
           </CardTitle>
           <CardDescription>
-            Sign in to manage Industrial Visits
+            Sign in to register and view Industrial Visits
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
@@ -63,7 +75,7 @@ const AdminLogin = () => {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
@@ -73,13 +85,13 @@ const AdminLogin = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your.email@somaiya.edu"
+                  placeholder="your.email@example.com"
                   className="pl-10"
                   required
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
@@ -102,7 +114,7 @@ const AdminLogin = () => {
                 </button>
               </div>
             </div>
-            
+
             <Button 
               type="submit" 
               className="w-full bg-red-600 hover:bg-red-700"
@@ -111,12 +123,12 @@ const AdminLogin = () => {
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-          
-          
         </CardContent>
       </Card>
     </div>
   );
 };
 
-export default AdminLogin;
+export default StudentLogin;
+
+

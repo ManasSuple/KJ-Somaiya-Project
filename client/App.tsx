@@ -19,6 +19,7 @@ import AdminPanel from "./components/AdminPanel";
 import AddVisit from "./pages/admin/AddVisit";
 import AdminLogin from "./pages/admin/Login";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import StudentLogin from "./pages/student/Login";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/student/login" element={<StudentLogin />} />
             <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
             <Route path="/admin/add-visit" element={<ProtectedRoute><AddVisit /></ProtectedRoute>} />
             <Route path="/register-visit" element={<StudentRegistration />} />
