@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Upload, X, Trash2 } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight, Plus, Upload, X, Trash2, Eye, Search, Filter } from "lucide-react";
 import { supabase } from "@/lib/supabase"; // Adjust path as needed
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 interface IVVisit {
   id: string;
@@ -24,6 +27,9 @@ const IVGallery = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState<boolean>(false);
   const [deletingImage, setDeletingImage] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+  const [detailsVisit, setDetailsVisit] = useState<IVVisit | null>(null);
 
   useEffect(() => {
     const fetchIVVisits = async () => {
@@ -56,6 +62,22 @@ const IVGallery = () => {
   const toggleIV = (id: string) => {
     setExpandedIV(expandedIV === id ? null : id);
   };
+
+  const departments = useMemo(() => {
+    return Array.from(new Set(ivVisits.map(v => v.department))).sort();
+  }, [ivVisits]);
+
+  const filteredVisits = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return ivVisits.filter((iv) => {
+      const matchesQ = !q || iv.title.toLowerCase().includes(q) ||
+        iv.location_city.toLowerCase().includes(q) ||
+        iv.location_state.toLowerCase().includes(q) ||
+        iv.industry.toLowerCase().includes(q);
+      const matchesDept = selectedDepartment === "all" || iv.department === selectedDepartment;
+      return matchesQ && matchesDept;
+    });
+  }, [ivVisits, searchTerm, selectedDepartment]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -256,117 +278,81 @@ const IVGallery = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">IV Gallery</h2>
-        <button
-          onClick={() => setShowUploadDialog(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Images
-        </button>
+        {/* <div className="text-sm text-gray-600">{filteredVisits.length} of {ivVisits.length} visits</div> */}
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search past visits..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full sm:w-64"
+              />
+            </div>
+            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+              <SelectTrigger className="w-full sm:w-48">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="text-sm text-gray-600">
+            {filteredVisits.length} of {ivVisits.length} visits
+          </div>
+        </div>
       </div>
 
       {loading ? (
         <p className="text-gray-500">Loading visits...</p>
-      ) : ivVisits.length === 0 ? (
+      ) : filteredVisits.length === 0 ? (
         <p className="text-gray-500">No visits found.</p>
       ) : (
-        <div className="space-y-4">
-          {ivVisits.map((iv) => (
-            <div key={iv.id} className="border rounded-lg shadow-sm">
-              <button
-                className="w-full flex justify-between items-center px-4 py-3 text-left bg-gray-100 hover:bg-gray-200 transition-colors"
-                onClick={() => toggleIV(iv.id)}
-              >
-                <div className="flex flex-col items-start">
-                  <span className="font-medium text-gray-900">{iv.title}</span>
-                  <span className="text-sm text-gray-600">
-                    {iv.location_city}, {iv.location_state} • {formatDate(iv.visit_date)}
-                  </span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredVisits.map((iv) => (
+            <div key={iv.id} className="border rounded-lg shadow-sm overflow-hidden group">
+              {/* Image header like PastVisits */}
+              <div className="relative aspect-video bg-gray-200">
+                <img
+                  src={(iv.image_urls && iv.image_urls[0]) || "/placeholder.svg"}
+                  alt={iv.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center">
+                  <button
+                    className="bg-white/90 rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    onClick={() => setDetailsVisit(iv)}
+                    title="View details"
+                  >
+                    <Eye className="h-5 w-5 text-gray-700" />
+                  </button>
                 </div>
-                {expandedIV === iv.id ? (
-                  <ChevronDown className="w-5 h-5" />
-                ) : (
-                  <ChevronRight className="w-5 h-5" />
-                )}
-              </button>
+              </div>
 
-              {expandedIV === iv.id && (
-                <div className="p-4 bg-white">
-                  {/* Visit Details */}
-                  <div className="mb-4 space-y-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-700">Department:</span>{" "}
-                        <span className="text-gray-600">{iv.department}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Industry:</span>{" "}
-                        <span className="text-gray-600">{iv.industry}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Available Seats:</span>{" "}
-                        <span className="text-gray-600">{iv.available_seats}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Visit Date:</span>{" "}
-                        <span className="text-gray-600">{formatDate(iv.visit_date)}</span>
-                      </div>
-                    </div>
-                    {iv.description && (
-                      <div>
-                        <span className="font-medium text-gray-700">Description:</span>
-                        <p className="text-gray-600 mt-1">{iv.description}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Image Gallery */}
+              {/* Top meta similar to PastVisits */}
+              <div className="p-4">
+                <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h4 className="font-medium text-gray-700 mb-3">
-                      Gallery ({iv.image_urls?.length || 0} image{(iv.image_urls?.length || 0) !== 1 ? 's' : ''})
-                    </h4>
-                    {iv.image_urls && iv.image_urls.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {iv.image_urls.map((imageUrl, index) => (
-                          <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 relative group">
-                            <img
-                              src={imageUrl}
-                              alt={`${iv.title} visit image ${index + 1}`}
-                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f3f4f6'/%3E%3Ctext x='50' y='50' text-anchor='middle' dy='.3em' font-family='Arial, sans-serif' font-size='12' fill='%23666'%3ENo Image%3C/text%3E%3C/svg%3E";
-                              }}
-                            />
-                            {/* Delete Button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteImage(iv.id, imageUrl, index);
-                              }}
-                              disabled={deletingImage === `${iv.id}-${index}`}
-                              className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Delete image"
-                            >
-                              {deletingImage === `${iv.id}-${index}` ? (
-                                <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
-                              ) : (
-                                <Trash2 className="w-3 h-3" />
-                              )}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="aspect-square rounded-lg bg-gray-200 flex items-center justify-center max-w-xs">
-                        <span className="text-gray-500 text-sm">No images available</span>
-                      </div>
-                    )}
+                    <div className="text-lg font-semibold text-gray-900">{iv.title}</div>
+                    <div className="text-sm text-gray-600">
+                      {iv.location_city}, {iv.location_state} • {formatDate(iv.visit_date)}
+                    </div>
                   </div>
                 </div>
-              )}
+
+                {/* Details moved to dialog */}
+              </div>
             </div>
           ))}
         </div>
@@ -374,7 +360,7 @@ const IVGallery = () => {
 
       {/* Upload Dialog */}
       {showUploadDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
@@ -492,6 +478,73 @@ const IVGallery = () => {
           </div>
         </div>
       )}
+
+      {/* Details Dialog */}
+      <Dialog open={!!detailsVisit} onOpenChange={(open) => setDetailsVisit(open ? detailsVisit : null)}>
+        <DialogContent className="sm:max-w-3xl z-[90]">
+          {detailsVisit && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{detailsVisit.title}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="text-sm text-gray-600">
+                  {detailsVisit.location_city}, {detailsVisit.location_state} • {formatDate(detailsVisit.visit_date)}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500">Department:</span> <span className="font-medium text-gray-800">{detailsVisit.department}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Industry:</span> <span className="font-medium text-gray-800">{detailsVisit.industry}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Available Seats:</span> <span className="font-medium text-gray-800">{detailsVisit.available_seats}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Visit Date:</span> <span className="font-medium text-gray-800">{formatDate(detailsVisit.visit_date)}</span>
+                  </div>
+                </div>
+                {detailsVisit.description && (
+                  <p className="text-sm text-gray-600">{detailsVisit.description}</p>
+                )}
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-gray-900">Gallery ({detailsVisit.image_urls?.length || 0})</h4>
+                  <button
+                    onClick={() => { setSelectedVisitId(detailsVisit.id); setDetailsVisit(null); setShowUploadDialog(true); }}
+                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" /> Add Images
+                  </button>
+                </div>
+                {detailsVisit.image_urls && detailsVisit.image_urls.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {detailsVisit.image_urls.map((imageUrl, index) => (
+                      <div key={index} className="aspect-video rounded-lg overflow-hidden bg-gray-100 relative group">
+                        <img src={imageUrl} alt={`${detailsVisit.title} ${index + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => deleteImage(detailsVisit.id, imageUrl, index)}
+                          disabled={deletingImage === `${detailsVisit.id}-${index}`}
+                          className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Delete image"
+                        >
+                          {deletingImage === `${detailsVisit.id}-${index}` ? (
+                            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <Trash2 className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg bg-gray-100 p-6 text-center text-sm text-gray-500">No images available</div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
