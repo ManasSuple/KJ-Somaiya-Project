@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import supabase from '@/lib/supabase';
 import Signup from '@/pages/Signup';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 
 interface ContentAreaProps {
@@ -44,6 +45,7 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
   const [pastVisits, setPastVisits] = useState<VisitItem[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
   
   // Admin users list from public.users table
   type AdminUser = {
@@ -576,24 +578,40 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
     </div>
   );
 
-  // Assign Roles now embeds the Signup component
+  // Assign Roles now embeds the Signup component conditionally
   const renderManageRoles = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Signup</h2>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-0">
-        <Signup redirectTo={null} />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <h3 className="text-xl font-semibold text-gray-900">Existing Users</h3>
+          <button
+            onClick={() => setShowSignup(true)}
+            className="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add User</span>
+          </button>
+          <button 
+            onClick={fetchAuthUsers}
+            className="bg-gray-900 text-white px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center space-x-2"
+          >
+            <Search className="w-4 h-4" />
+            <span>Refresh</span>
+          </button>
+        </div>
+        <div />
       </div>
 
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold text-gray-900">Existing Users </h3>
-        <button 
-          onClick={fetchAuthUsers}
-          className="bg-gray-900 text-white px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center space-x-2"
-        >
-          <Search className="w-4 h-4" />
-          <span>Refresh</span>
-        </button>
-      </div>
+      <Dialog open={showSignup} onOpenChange={setShowSignup}>
+        <DialogContent className="sm:max-w-xs p-3">
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2">
+            <Signup redirectTo={null} />
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="overflow-x-auto">
           <table className="w-full">
