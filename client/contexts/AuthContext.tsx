@@ -1,10 +1,11 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import supabase from "@/lib/supabase";
 
 interface User {
   id: string;
-  name: string;
   email: string;
-  role: 'faculty' | 'super_admin';
+  name?: string | null;
+  role?: 'faculty' | 'super_admin';
   department?: string;
 }
 
@@ -30,66 +31,53 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Mock users for demo purposes
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Dr. Rajesh Kumar',
-    email: 'rajesh.kumar@somaiya.edu',
-    role: 'faculty',
-    department: 'Computer Science Engineering'
-  },
-  {
-    id: '2',
-    name: 'Prof. Priya Sharma',
-    email: 'priya.sharma@somaiya.edu',
-    role: 'super_admin',
-    department: 'Administration'
-  },
-  {
-    id: '3',
-    name: 'Dr. Amit Patel',
-    email: 'amit.patel@somaiya.edu',
-    role: 'faculty',
-    department: 'Mechanical Engineering'
-  }
-];
-
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Mock authentication - in real app, this would call your backend
-    const foundUser = mockUsers.find(u => u.email === email);
-    
-    if (foundUser && password === 'admin123') {
-      setUser(foundUser);
-      localStorage.setItem('admin_user', JSON.stringify(foundUser));
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return false;
+    if (data.user) {
+      setUser({ id: data.user.id, email: data.user.email ?? "", name: data.user.user_metadata?.full_name ?? null });
       return true;
     }
     return false;
   };
 
   const logout = () => {
+    supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('admin_user');
   };
 
   const isAuthenticated = !!user;
 
-  const hasRole = (role: 'faculty' | 'super_admin') => {
-    if (!user) return false;
-    if (role === 'faculty') return user.role === 'faculty' || user.role === 'super_admin';
-    return user.role === role;
+  const hasRole = (_role: 'faculty' | 'super_admin') => {
+    // Role handling can be extended if you store roles in user metadata or a separate table
+    return !!user; // For now, any authenticated user passes role checks
   };
 
-  // Check for existing session on mount
-  useState(() => {
-    const savedUser = localStorage.getItem('admin_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-  });
+  // Initialize from existing Supabase session and subscribe to auth changes
+  useEffect(() => {
+    const init = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        setUser({ id: data.user.id, email: data.user.email ?? "", name: data.user.user_metadata?.full_name ?? null });
+      }
+    };
+    init();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email ?? "", name: session.user.user_metadata?.full_name ?? null });
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   const value = {
     user,

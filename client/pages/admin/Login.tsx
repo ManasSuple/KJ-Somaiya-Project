@@ -26,7 +26,7 @@ const AdminLogin = () => {
     try {
       const success = await login(email, password);
       if (success) {
-        navigate("/admin/dashboard");
+        navigate("/admin");
       } else {
         setError("Invalid email or password");
       }

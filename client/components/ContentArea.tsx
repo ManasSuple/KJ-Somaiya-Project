@@ -16,16 +16,6 @@ import {
   MoreVertical
 } from 'lucide-react';
 import supabase from '@/lib/supabase';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 
 
 interface ContentAreaProps {
@@ -35,7 +25,6 @@ interface ContentAreaProps {
 
 const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [registrationSearchTerm, setRegistrationSearchTerm] = useState('');
   const [selectedVisitFilter, setSelectedVisitFilter] = useState('all');
@@ -54,18 +43,9 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
   const [pastVisits, setPastVisits] = useState<VisitItem[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [visitToDelete, setVisitToDelete] = useState<VisitItem | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  
-  // User management states
-  const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [userSearchTerm, setUserSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
-      console.log('Fetching visits data...');
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -84,8 +64,6 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
           .lt('visit_date', currentDate)
           .order('visit_date', { ascending: false })
       ]);
-
-      console.log('Fetch results:', { upcoming, upErr, past, pastErr });
 
       if (!upErr && upcoming) {
         const mappedUpcoming: VisitItem[] = upcoming.map((row: any) => ({
@@ -115,65 +93,6 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
     };
     fetchData();
   }, []);
-
-  const handleDeleteClick = (visit: VisitItem) => {
-    console.log('Delete button clicked for visit:', visit);
-    setVisitToDelete(visit);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!visitToDelete) return;
-    
-    console.log('Attempting to delete visit:', visitToDelete);
-    setIsDeleting(true);
-    
-    try {
-      console.log('Sending delete request to Supabase for ID:', visitToDelete.id);
-      
-      const { data, error } = await supabase
-        .from('iv_visits')
-        .delete()
-        .eq('id', visitToDelete.id)
-        .select(); // Add select() to see what was deleted
-
-      console.log('Supabase response:', { data, error });
-
-      if (error) {
-        console.error('Error deleting visit:', error);
-        toast({
-          title: "Error",
-          description: `Failed to delete visit: ${error.message}`,
-          variant: "destructive",
-        });
-      } else {
-        console.log('Successfully deleted visit from database');
-        // Remove the deleted visit from both upcoming and past visits states
-        setUpcomingVisits(prev => prev.filter(v => v.id !== visitToDelete.id));
-        setPastVisits(prev => prev.filter(v => v.id !== visitToDelete.id));
-        setDeleteDialogOpen(false);
-        setVisitToDelete(null);
-        toast({
-          title: "Success",
-          description: "Visit deleted successfully.",
-        });
-      }
-    } catch (error) {
-      console.error('Exception during delete:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete visit. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setDeleteDialogOpen(false);
-    setVisitToDelete(null);
-  };
 
   const fetchRegistrations = async () => {
     setIsLoadingRegistrations(true);
@@ -276,66 +195,9 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
     document.body.removeChild(link);
   };
 
-  // Fetch all users from Supabase
-  const fetchAllUsers = async () => {
-    setIsLoadingUsers(true);
-    try {
-      // Since we can't directly access auth.users from the client,
-      // we'll fetch from a custom users table or use a different approach
-      // For now, let's create a mock data structure similar to what you'd get from Supabase
-      
-      // Option 1: If you have a custom users table
-      const { data, error } = await supabase
-        .from('users')
-        .select('*');
-
-      if (error) {
-        console.log('Custom users table not found, using mock data for demonstration');
-        // Fallback to mock data for demonstration
-        const mockUsers = [
-          {
-            id: 'b2f3f812-4de3-4c43-8f46-7e1e8e069bd6',
-            email: 'manas.suple@somaiya.edu',
-            phone: null,
-            user_metadata: { full_name: 'Manas Suple' },
-            app_metadata: { provider: 'Email', providers: ['email'] },
-            created_at: '2024-01-15T10:30:00Z'
-          },
-          {
-            id: 'e0cdbe15-0207-43ea-a2c2-b646060e304e',
-            email: 'kush@gmail.com',
-            phone: null,
-            user_metadata: { full_name: 'Kush' },
-            app_metadata: { provider: 'Email', providers: ['email'] },
-            created_at: '2024-01-10T14:20:00Z'
-          }
-        ];
-        setAllUsers(mockUsers);
-      } else {
-        setAllUsers(data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch users",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingUsers(false);
-    }
-  };
-
   useEffect(() => {
     if (activeSection === 'registrations' || activeSection === 'download') {
       fetchRegistrations();
-    }
-  }, [activeSection]);
-
-  // Fetch all users when on roles section
-  useEffect(() => {
-    if (activeSection === 'roles') {
-      fetchAllUsers();
     }
   }, [activeSection]);
 
@@ -420,10 +282,7 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
                   <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button 
-                    onClick={() => handleDeleteClick(visit)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                  >
+                  <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
                     <Trash2 className="w-4 h-4" />
                   </button>
                   <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg">
@@ -498,15 +357,6 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
                   </button>
                   <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg">
                     <Edit className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteClick(visit)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg">
-                    <MoreVertical className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -687,18 +537,13 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
     </div>
   );
 
-
-
-  const renderManageRoles = () => (
+  const renderManageAdmins = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Manage Roles</h2>
-        <button 
-          onClick={fetchAllUsers}
-          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
-        >
-          <Search className="w-4 h-4" />
-          <span>Refresh Users</span>
+        <h2 className="text-2xl font-bold text-gray-900">Manage Admins</h2>
+        <button className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2">
+          <Plus className="w-4 h-4" />
+          <span>Add New Admin</span>
         </button>
       </div>
 
@@ -711,71 +556,40 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {isLoadingUsers ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                    <div className="flex items-center justify-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                      <span>Loading users...</span>
+              {[1, 2, 3].map((admin) => (
+                <tr key={admin} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-purple-600">AD</span>
+                      </div>
+                      <div className="ml-3">
+                        <div className="text-sm font-medium text-gray-900">Admin User</div>
+                        <div className="text-sm text-gray-500">admin@university.edu</div>
+                      </div>
                     </div>
                   </td>
-                </tr>
-              ) : allUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                    No users found
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                      Faculty Admin
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Computer Science</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                      Active
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button className="text-red-600 hover:text-red-900 mr-3">Edit</button>
+                    <button className="text-red-600 hover:text-red-900">Delete</button>
                   </td>
                 </tr>
-              ) : (
-                allUsers
-                  .filter(user => {
-                    if (!userSearchTerm) return true;
-                    const searchTerm = userSearchTerm.toLowerCase();
-                    return (
-                      (user.email && user.email.toLowerCase().includes(searchTerm)) ||
-                      (user.phone && user.phone.toLowerCase().includes(searchTerm)) ||
-                      (user.id && user.id.toLowerCase().includes(searchTerm))
-                    );
-                  })
-                  .map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium text-purple-600">
-                              {user.email ? user.email.substring(0, 2).toUpperCase() : 'U'}
-                            </span>
-                          </div>
-                          <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">
-                              {user.user_metadata?.full_name || user.raw_user_meta_data?.full_name || 'Admin User'}
-                            </div>
-                            <div className="text-sm text-gray-500">{user.email || '—'}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                          Faculty Admin
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Computer Science</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          Active
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button className="text-red-600 hover:text-red-900 mr-3">Edit</button>
-                        <button className="text-red-600 hover:text-red-900">Delete</button>
-                      </td>
-                    </tr>
-                  ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
@@ -795,8 +609,10 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
         return renderRegistrations();
       case 'download':
         return renderRegistrations(); // Same as registrations but with download focus
+      case 'admins':
+        return userRole === 'super' ? renderManageAdmins() : renderUpcomingVisits();
       case 'roles':
-        return userRole === 'super' ? renderManageRoles() : renderUpcomingVisits();
+        return userRole === 'super' ? renderManageAdmins() : renderUpcomingVisits();
       default:
         return renderUpcomingVisits();
     }
@@ -805,34 +621,6 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
   return (
     <div className="flex-1 bg-gray-50 p-6 overflow-auto">
       {renderContent()}
-      
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Visit</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{visitToDelete?.title}"? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleDeleteCancel}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
