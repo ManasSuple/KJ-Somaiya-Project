@@ -18,6 +18,7 @@ import {
 import supabase from '@/lib/supabase';
 import Signup from '@/pages/Signup';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import IVGallery from './ivgallery';
 
 
 interface ContentAreaProps {
@@ -408,42 +409,9 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
     </div>
   );
 
-  const renderGallery = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Gallery</h2>
-        <button className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2">
-          <Upload className="w-4 h-4" />
-          <span>Upload Images</span>
-        </button>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((image) => (
-            <div key={image} className="relative group">
-              <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
-                <img
-                  src={`https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg?auto=compress&cs=tinysrgb&w=400`}
-                  alt={`Gallery image ${image}`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                />
-              </div>
-              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
-                  <button className="p-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100">
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+  const renderGallery = () => 
+    (
+   <IVGallery/>
   );
 
   const renderRegistrations = () => (
