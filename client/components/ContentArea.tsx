@@ -603,7 +603,7 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
       </div>
 
       <Dialog open={showSignup} onOpenChange={setShowSignup}>
-        <DialogContent className="sm:max-w-xs p-3">
+        <DialogContent className="">
           <DialogHeader>
             <DialogTitle>Create New User</DialogTitle>
           </DialogHeader>
