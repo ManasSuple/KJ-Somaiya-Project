@@ -44,6 +44,14 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
 
+  // Assign Roles (Students) state
+  const [students, setStudents] = useState<any[]>([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [newAdminDepartment, setNewAdminDepartment] = useState('');
+
   useEffect(() => {
     const fetchData = async () => {
       const today = new Date();
@@ -195,16 +203,65 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
     document.body.removeChild(link);
   };
 
+  // Fetch all students for Assign Roles page
+  const fetchStudents = async () => {
+    setIsLoadingStudents(true);
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Error fetching students:', error);
+      } else {
+        setStudents(data || []);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching students:', err);
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  };
+
+  // Insert new admin (student) row
+  const handleAddAdmin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newAdminEmail || !newAdminPassword || !newAdminDepartment) return;
+    try {
+      const { error } = await supabase
+        .from('students')
+        .insert({
+          email: newAdminEmail,
+          password: newAdminPassword,
+          department: newAdminDepartment,
+        });
+      if (error) {
+        console.error('Error adding admin:', error);
+        return;
+      }
+      setNewAdminEmail('');
+      setNewAdminPassword('');
+      setNewAdminDepartment('');
+      setIsAddAdminOpen(false);
+      fetchStudents();
+    } catch (err) {
+      console.error('Unexpected error adding admin:', err);
+    }
+  };
+
   useEffect(() => {
     if (activeSection === 'registrations' || activeSection === 'download') {
       fetchRegistrations();
     }
+    if (activeSection === 'roles') {
+      fetchStudents();
+    }
   }, [activeSection]);
 
-  // Also fetch registrations on component mount if we're on the registrations section
+  // On mount, if roles is active by default we can optionally prefetch
   useEffect(() => {
-    if (activeSection === 'registrations' || activeSection === 'download') {
-      fetchRegistrations();
+    if (activeSection === 'roles') {
+      fetchStudents();
     }
   }, []);
 
@@ -537,59 +594,155 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
     </div>
   );
 
-  const renderManageAdmins = () => (
+  // Assign Roles: list students and add dialog
+  const renderManageRoles = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Manage Admins</h2>
-        <button className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2">
-          <Plus className="w-4 h-4" />
-          <span>Add New Admin</span>
-        </button>
+        <h2 className="text-2xl font-bold text-gray-900">Assign Roles</h2>
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={fetchStudents}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+          >
+            <Search className="w-4 h-4" />
+            <span>Refresh Users</span>
+          </button>
+          <button 
+            onClick={() => setIsAddAdminOpen(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Admin</span>
+          </button>
+        </div>
       </div>
+
+      {/* Add Admin Dialog */}
+      {isAddAdminOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
+            <form onSubmit={handleAddAdmin}>
+              <div className="px-6 py-4 border-b">
+                <h3 className="text-lg font-semibold">Add New Admin</h3>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="admin@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input
+                    type="text"
+                    value={newAdminPassword}
+                    onChange={(e) => setNewAdminPassword(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="temporary-password"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                  <input
+                    type="text"
+                    value={newAdminDepartment}
+                    onChange={(e) => setNewAdminDepartment(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="Computer Science"
+                  />
+                </div>
+              </div>
+              <div className="px-6 py-4 border-t flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddAdminOpen(false)}
+                  className="px-4 py-2 rounded-md border bg-white text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+                >
+                  Add Admin
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                <th className="px-6 py-3"></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {[1, 2, 3].map((admin) => (
-                <tr key={admin} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-purple-600">AD</span>
-                      </div>
-                      <div className="ml-3">
-                        <div className="text-sm font-medium text-gray-900">Admin User</div>
-                        <div className="text-sm text-gray-500">admin@university.edu</div>
-                      </div>
+              {isLoadingStudents ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Loading users...</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                      Faculty Admin
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Computer Science</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                      Active
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-red-600 hover:text-red-900 mr-3">Edit</button>
-                    <button className="text-red-600 hover:text-red-900">Delete</button>
-                  </td>
                 </tr>
-              ))}
+              ) : students.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">No users found</td>
+                </tr>
+              ) : (
+                students.map((u) => (
+                  <tr key={u.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-purple-600">
+                            {(u.email || '').slice(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="ml-3">
+                          <div className="text-sm font-medium text-gray-900">{u.email}</div>
+                          <div className="text-xs text-gray-500">{u.id}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{u.department}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{new Date(u.created_at).toLocaleString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+                      <button className="text-red-600 hover:text-red-800" onClick={async () => {
+                        try {
+                          const { error } = await supabase
+                            .from('students')
+                            .delete()
+                            .eq('id', u.id);
+                          if (error) {
+                            console.error('Error deleting user:', error);
+                          } else {
+                            setStudents(prev => prev.filter((s) => s.id !== u.id));
+                          }
+                        } catch (err) {
+                          console.error('Unexpected error deleting user:', err);
+                        }
+                      }}>Delete</button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -609,10 +762,8 @@ const ContentArea: React.FC<ContentAreaProps> = ({ activeSection, userRole }) =>
         return renderRegistrations();
       case 'download':
         return renderRegistrations(); // Same as registrations but with download focus
-      case 'admins':
-        return userRole === 'super' ? renderManageAdmins() : renderUpcomingVisits();
       case 'roles':
-        return userRole === 'super' ? renderManageAdmins() : renderUpcomingVisits();
+        return userRole === 'super' ? renderManageRoles() : renderUpcomingVisits();
       default:
         return renderUpcomingVisits();
     }
